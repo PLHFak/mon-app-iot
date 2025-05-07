@@ -1,0 +1,21 @@
+[
+  {
+    "id": 1,
+    "name": "Lampe Salon",
+    "type": "light",
+    "status": "off"
+  },
+  {
+    "id": 2,
+    "name": "Thermostat",
+    "type": "climate",
+    "status": "on",
+    "temperature": 21
+  },
+  {
+    "id": 3,
+    "name": "pill",
+    "type": "light",
+    "status": "off"
+  }
+]

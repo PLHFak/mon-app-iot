@@ -4,36 +4,47 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Application IoT</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .device {
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-        }
-        .device h3 {
-            margin-top: 0;
-        }
-        .controls {
-            margin-top: 10px;
-        }
-        button {
-            padding: 5px 10px;
-            margin-right: 5px;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body>
-    <h1>Mon Application IoT</h1>
+    <header>
+        <h1>Mon Application IoT</h1>
+        <p>Contrôlez vos appareils facilement</p>
+    </header>
     
-    <div id="devices-container">
-        <p>Chargement des appareils...</p>
+    <div id="devices-container" class="dashboard">
+        <div class="loading">
+            <i class="fas fa-spinner fa-spin"></i> Chargement des appareils...
+        </div>
+    </div>
+
+    <button id="add-device-btn" class="add-device-btn">
+        <i class="fas fa-plus"></i> Ajouter un appareil
+    </button>
+
+    <!-- Modal d'ajout d'appareil -->
+    <div id="add-device-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Ajouter un nouvel appareil</h2>
+            <form id="add-device-form">
+                <label for="device-name">Nom de l'appareil:</label>
+                <input type="text" id="device-name" required>
+                
+                <label for="device-type">Type d'appareil:</label>
+                <select id="device-type" required>
+                    <option value="">-- Sélectionnez un type --</option>
+                    <option value="light">Lumière</option>
+                    <option value="climate">Thermostat</option>
+                </select>
+                
+                <div class="form-buttons">
+                    <button type="button" id="cancel-btn">Annuler</button>
+                    <button type="submit" class="on-btn">Ajouter</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script>
@@ -45,8 +56,11 @@
                 displayDevices(devices);
             } catch (error) {
                 console.error('Erreur lors du chargement des appareils:', error);
-                document.getElementById('devices-container').innerHTML = 
-                    '<p>Erreur lors du chargement des appareils. Veuillez réessayer.</p>';
+                document.getElementById('devices-container').innerHTML = `
+                    <div class="error">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        Erreur lors du chargement des appareils. Veuillez réessayer.
+                    </div>`;
             }
         }
 
@@ -55,26 +69,51 @@
             const container = document.getElementById('devices-container');
             
             if (devices.length === 0) {
-                container.innerHTML = '<p>Aucun appareil trouvé.</p>';
+                container.innerHTML = `
+                    <div class="loading">
+                        <i class="fas fa-info-circle"></i> Aucun appareil trouvé.
+                    </div>`;
                 return;
             }
             
             let html = '';
             devices.forEach(device => {
+                // Déterminer l'icône en fonction du type d'appareil
+                let icon = '';
+                if (device.type === 'light') {
+                    icon = device.status === 'on' ? 
+                        '<i class="fas fa-lightbulb device-icon"></i>' : 
+                        '<i class="far fa-lightbulb device-icon"></i>';
+                } else if (device.type === 'climate') {
+                    icon = '<i class="fas fa-thermometer-half device-icon"></i>';
+                }
+                
                 html += `
-                    <div class="device" data-id="${device.id}">
-                        <h3>${device.name}</h3>
-                        <p>Type: ${device.type}</p>
-                        <p>Statut: <span class="status">${device.status}</span></p>
-                        ${device.temperature ? `<p>Température: ${device.temperature}°C</p>` : ''}
+                    <div class="device" data-id="${device.id}" data-type="${device.type}">
+                        <h3>${icon} ${device.name}</h3>
+                        <div class="device-details">
+                            <p>Type: ${device.type === 'light' ? 'Lumière' : 'Thermostat'}</p>
+                            <p>Statut: <span class="status status-${device.status}">${device.status === 'on' ? 'Allumé' : 'Éteint'}</span></p>
+                            ${device.temperature ? `
+                                <p>Température: <span class="temperature">${device.temperature}</span>°C</p>
+                            ` : ''}
+                        </div>
                         <div class="controls">
                             ${device.type === 'light' ? `
-                                <button onclick="controlDevice(${device.id}, 'on')">Allumer</button>
-                                <button onclick="controlDevice(${device.id}, 'off')">Éteindre</button>
+                                <button class="on-btn" onclick="controlDevice(${device.id}, 'on')">
+                                    <i class="fas fa-power-off"></i> Allumer
+                                </button>
+                                <button class="off-btn" onclick="controlDevice(${device.id}, 'off')">
+                                    <i class="fas fa-power-off"></i> Éteindre
+                                </button>
                             ` : ''}
                             ${device.type === 'climate' ? `
-                                <button onclick="controlDevice(${device.id}, 'up')">+</button>
-                                <button onclick="controlDevice(${device.id}, 'down')">-</button>
+                                <button class="temp-btn" onclick="controlDevice(${device.id}, 'up')">
+                                    <i class="fas fa-plus"></i> Augmenter
+                                </button>
+                                <button class="temp-btn" onclick="controlDevice(${device.id}, 'down')">
+                                    <i class="fas fa-minus"></i> Diminuer
+                                </button>
                             ` : ''}
                         </div>
                     </div>
@@ -87,6 +126,11 @@
         // Fonction pour contrôler un appareil
         async function controlDevice(deviceId, command) {
             try {
+                const deviceElement = document.querySelector(`.device[data-id="${deviceId}"]`);
+                if (deviceElement) {
+                    deviceElement.style.opacity = "0.7";
+                }
+
                 const response = await fetch(`/api/devices/${deviceId}/control`, {
                     method: 'POST',
                     headers: {
@@ -98,18 +142,107 @@
                 const result = await response.json();
                 console.log(result);
                 
-                // Dans une application réelle, nous attendrions une confirmation 
-                // de l'appareil avant de mettre à jour l'interface
-                if (result.success) {
-                    // Simulons une mise à jour de statut pour l'exemple
-                    const statusElement = document.querySelector(`.device[data-id="${deviceId}"] .status`);
-                    if (command === 'on') statusElement.textContent = 'on';
-                    if (command === 'off') statusElement.textContent = 'off';
+                if (result.success && result.device) {
+                    // Mettre à jour l'interface avec les nouvelles valeurs
+                    const device = result.device;
+                    const deviceElement = document.querySelector(`.device[data-id="${deviceId}"]`);
+                    
+                    if (deviceElement) {
+                        deviceElement.style.opacity = "1";
+                        
+                        const statusElement = deviceElement.querySelector('.status');
+                        if (statusElement) {
+                            const statusText = device.status === 'on' ? 'Allumé' : 'Éteint';
+                            statusElement.textContent = statusText;
+                            statusElement.className = `status status-${device.status}`;
+                        }
+                        
+                        // Mettre à jour l'icône pour les lumières
+                        if (device.type === 'light') {
+                            const iconContainer = deviceElement.querySelector('.device-icon');
+                            if (iconContainer) {
+                                iconContainer.className = device.status === 'on' ? 
+                                    'fas fa-lightbulb device-icon' : 
+                                    'far fa-lightbulb device-icon';
+                            }
+                        }
+                        
+                        // Mettre à jour la température
+                        const temperatureElement = deviceElement.querySelector('.temperature');
+                        if (temperatureElement && device.temperature !== undefined) {
+                            temperatureElement.textContent = device.temperature;
+                        }
+                    }
                 }
                 
             } catch (error) {
                 console.error('Erreur lors de l\'envoi de la commande:', error);
                 alert('Erreur lors de l\'envoi de la commande. Veuillez réessayer.');
+                const deviceElement = document.querySelector(`.device[data-id="${deviceId}"]`);
+                if (deviceElement) {
+                    deviceElement.style.opacity = "1";
+                }
+            }
+        }
+
+        // Gestion de la modal d'ajout d'appareil
+        const modal = document.getElementById("add-device-modal");
+        const addBtn = document.getElementById("add-device-btn");
+        const closeBtn = document.querySelector(".close");
+        const cancelBtn = document.getElementById("cancel-btn");
+        const form = document.getElementById("add-device-form");
+
+        addBtn.onclick = function() {
+            modal.style.display = "block";
+        }
+
+        closeBtn.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        cancelBtn.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        form.onsubmit = async function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById("device-name").value;
+            const type = document.getElementById("device-type").value;
+            
+            if (!name || !type) {
+                alert("Veuillez remplir tous les champs");
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/devices', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, type })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    modal.style.display = "none";
+                    form.reset();
+                    loadDevices(); // Recharger la liste des appareils
+                } else {
+                    alert(result.message || "Erreur lors de l'ajout de l'appareil");
+                }
+                
+            } catch (error) {
+                console.error('Erreur lors de l\'ajout de l\'appareil:', error);
+                alert('Erreur lors de l\'ajout de l\'appareil. Veuillez réessayer.');
             }
         }
 
