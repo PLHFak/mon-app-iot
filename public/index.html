@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application IoT</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .device {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .device h3 {
+            margin-top: 0;
+        }
+        .controls {
+            margin-top: 10px;
+        }
+        button {
+            padding: 5px 10px;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mon Application IoT</h1>
+    
+    <div id="devices-container">
+        <p>Chargement des appareils...</p>
+    </div>
+
+    <script>
+        // Fonction pour charger les appareils depuis l'API
+        async function loadDevices() {
+            try {
+                const response = await fetch('/api/devices');
+                const devices = await response.json();
+                displayDevices(devices);
+            } catch (error) {
+                console.error('Erreur lors du chargement des appareils:', error);
+                document.getElementById('devices-container').innerHTML = 
+                    '<p>Erreur lors du chargement des appareils. Veuillez réessayer.</p>';
+            }
+        }
+
+        // Fonction pour afficher les appareils dans l'interface
+        function displayDevices(devices) {
+            const container = document.getElementById('devices-container');
+            
+            if (devices.length === 0) {
+                container.innerHTML = '<p>Aucun appareil trouvé.</p>';
+                return;
+            }
+            
+            let html = '';
+            devices.forEach(device => {
+                html += `
+                    <div class="device" data-id="${device.id}">
+                        <h3>${device.name}</h3>
+                        <p>Type: ${device.type}</p>
+                        <p>Statut: <span class="status">${device.status}</span></p>
+                        ${device.temperature ? `<p>Température: ${device.temperature}°C</p>` : ''}
+                        <div class="controls">
+                            ${device.type === 'light' ? `
+                                <button onclick="controlDevice(${device.id}, 'on')">Allumer</button>
+                                <button onclick="controlDevice(${device.id}, 'off')">Éteindre</button>
+                            ` : ''}
+                            ${device.type === 'climate' ? `
+                                <button onclick="controlDevice(${device.id}, 'up')">+</button>
+                                <button onclick="controlDevice(${device.id}, 'down')">-</button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // Fonction pour contrôler un appareil
+        async function controlDevice(deviceId, command) {
+            try {
+                const response = await fetch(`/api/devices/${deviceId}/control`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ command })
+                });
+                
+                const result = await response.json();
+                console.log(result);
+                
+                // Dans une application réelle, nous attendrions une confirmation 
+                // de l'appareil avant de mettre à jour l'interface
+                if (result.success) {
+                    // Simulons une mise à jour de statut pour l'exemple
+                    const statusElement = document.querySelector(`.device[data-id="${deviceId}"] .status`);
+                    if (command === 'on') statusElement.textContent = 'on';
+                    if (command === 'off') statusElement.textContent = 'off';
+                }
+                
+            } catch (error) {
+                console.error('Erreur lors de l\'envoi de la commande:', error);
+                alert('Erreur lors de l\'envoi de la commande. Veuillez réessayer.');
+            }
+        }
+
+        // Charger les appareils au chargement de la page
+        document.addEventListener('DOMContentLoaded', loadDevices);
+    </script>
+</body>
+</html>
